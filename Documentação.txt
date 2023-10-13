@@ -1,0 +1,143 @@
+API feita em Java Spring c/ Maven.
+Spring Web, JPA, H2 DataBase e FeignClient.
+Interface de consumo simples que consome apenas duas informações:
+Nome e CEP
+Retorna, porém, várias informações como: {
+  "id": 0,
+  "nome": "string",
+  "endereco": {
+    "cep": "80320-280",
+    "logradouro": "Rua Professor Zildo Manoel da Cruz",
+    "complemento": "",
+    "bairro": "Portão",
+    "localidade": "Curitiba",
+    "uf": "PR",
+    "ibge": "4106902",
+    "gia": "",
+    "siafi": "7535"
+  }
+}
+
+projeto feito com a devida precaução em separação de packages e classes.
+(controllers, model, services e implementações).
+CRUD completo.
+
+Você pode testar essa api com o Swagger em `ip`:8080/swagger-ui/index.html.
+
+
+
+
+
+
+projeto gerado com maven pelo spring initalzr.
+
+dependências:
+Spring web;
+Spring data JPA;
+H2 Database;
+OpenFeign;
+
+
+Primeiramente, habilitamos o feign na main com a seguinte annotation:
+@EnableFeignClients
+
+instalei manualmente a dependencia do Swagger:
+
+			<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-ui</artifactId>
+			<version>1.7.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.springfox</groupId>
+			<artifactId>springfox-swagger2</artifactId>
+			<version>2.9.2</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>io.springfox</groupId>
+			<artifactId>springfox-swagger-ui</artifactId>
+			<version>2.9.2</version>
+		</dependency>
+
+
+criei os respectivos pacotes e respectivas classes
+	a classe Endereco deixei o cep como id por ser a chave da nossa api
+
+
+utilizando o FeignClient:
+
+em nosso ViaCepService:
+
+@FeignClient(name = "viacep", url = "https://viacep.com.br/ws")
+public interface ViaCepService {
+    @GetMapping("/{cep}/json/")
+    Endereco consultarCep(@PathVariable("cep") String cep);
+}
+
+
+
+
+
+
+		------------------------------------- Novas implementações
+
+dar um findAll:
+ @Autowired
+    private ClienteRepository clienteRepository;
+    @Override
+    public Iterable<Cliente> buscarTodos() {
+        //Buscar todos os clientes
+
+        return clienteRepository.findAll();
+    }
+
+
+buscar apenas um por id:					//implementei a est. cond. para caso o cliente não exista retornar null
+  @Override
+    public Cliente buscarPorId(Long id) {
+        // Buscar cliente por ID
+        Optional<Cliente> cliente = clienteRepository.findById(id);
+        if(cliente!== null) {
+            return cliente.get();
+        }
+    }
+
+
+
+ public void inserir(Cliente cliente) {
+        salvarClienteComCep(cliente);
+    }
+
+
+    @Override
+    public void atualizar(Long id, Cliente cliente) {
+        Optional<Cliente> clienteBd = clienteRepository.findById(id);
+        if (clienteBd.isPresent()) {
+            salvarClienteComCep(cliente);
+        }
+    }
+
+    public void salvarClienteComCep(Cliente cliente) {
+        String cep = cliente.getEndereco().getCep();
+        Endereco endereco = enderecoRepository.findById(cep).orElseGet(() -> {
+            Endereco novoEndereco = viaCepService.consultarCep(cep);
+            enderecoRepository.save(novoEndereco);
+            return novoEndereco;
+        } );
+        cliente.setEndereco(endereco);
+        // Inserir
+        clienteRepository.save(cliente);
+    }
+
+    @Override
+    public void deletar(Long id) {
+        clienteRepository.deleteById(id);
+    }
+
+}
+
+
+
